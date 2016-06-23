@@ -144,7 +144,7 @@ def impute(target_xs, clf, raster_info, outdir="output", linechunk=1000, class_p
     ----------
     target_xs: Array of explanatory variables for which to predict responses
     clf: instance of a scikit-learn Classifier
-    raster_info: dictionary of raster attributes with key 'gt', 'shape' and 'srs'
+    raster_info: dictionary of raster attributes with key 'affine', 'shape' and 'srs'
 
     Options
     -------
