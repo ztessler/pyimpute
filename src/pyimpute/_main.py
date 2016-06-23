@@ -138,11 +138,11 @@ def load_targets(explanatory_rasters):
     return expl, raster_info
 
 
-def impute(target_xs, clf, raster_info, outdir="output", linechunk=1000, class_prob=True, certainty=True):
+def impute(target_xs, clf, raster_info=None, outdir="output", linechunk=1000, class_prob=True, certainty=True):
     """
     Parameters
     ----------
-    target_xs: Array of explanatory variables for which to predict responses
+    target_xs: Array of explanatory variables for which to predict responses, or list of explantatory rasters
     clf: instance of a scikit-learn Classifier
     raster_info: dictionary of raster attributes with key 'affine', 'shape' and 'srs'
 
@@ -155,6 +155,12 @@ def impute(target_xs, clf, raster_info, outdir="output", linechunk=1000, class_p
     """
     if not os.path.exists(outdir):
         os.makedirs(outdir)
+
+    windowread = False
+    if isinstance(target_xs, list):
+        _, raster_info = load_targets(target_xs[:1])
+        rasters = [rasterio.open(r, 'r') for r in target_xs]
+        windowread = True
 
     shape = raster_info['shape']
 
@@ -204,9 +210,15 @@ def impute(target_xs, clf, raster_info, outdir="output", linechunk=1000, class_p
             # in 1D space
             start = shape[1] * row
             end = start + shape[1] * linechunk
-            line = target_xs[start:end, :]
-
             window = ((row, row + linechunk), (0, shape[1]))
+
+            if windowread:
+                line = np.zeros((end-start, len(rasters)))
+                for i, rast in enumerate(rasters):
+                    line[:, i] = rast.read(1, window=window).flatten()
+            else:
+                line = target_xs[start:end, :]
+
 
             # Predict
             responses = clf.predict(line)
@@ -234,6 +246,9 @@ def impute(target_xs, clf, raster_info, outdir="output", linechunk=1000, class_p
             certainty_ds.close()
         for class_ds in class_dss:
             class_ds.close()
+        if windowread:
+            for rast in rasters:
+                rast.close()
 
 
 def stratified_sample_raster(strata_data, target_sample_size=30, min_sample_proportion=0.1):
