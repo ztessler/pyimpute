@@ -221,16 +221,20 @@ def impute(target_xs, clf, raster_info=None, outdir="output", linechunk=1000, cl
 
 
             # Predict
-            responses = clf.predict(line)
+            valid = np.array(list(set(np.where(np.any(np.isfinite(line), axis=1))[0])))
+            validline = line[valid, :]
+            responses = np.zeros(line.shape[0]) * np.nan
+            responses[valid] = clf.predict(validline)
             responses2D = responses.reshape((linechunk, shape[1])).astype('int16')
             response_ds.write_band(1, responses2D, window=window)
 
             if certainty or class_prob:
-                proba = clf.predict_proba(line)
+                proba = np.zeros((line.shape[0],2)) * np.nan
+                proba[valid, :] = clf.predict_proba(validline)
 
             # Certainty
             if certainty:
-                certaintymax = proba.max(axis=1)
+                certaintymax = np.nanmax(proba, axis=1)
                 certainty2D = certaintymax.reshape((linechunk, shape[1])).astype('float32')
                 certainty_ds.write_band(1, certainty2D, window=window)
 
