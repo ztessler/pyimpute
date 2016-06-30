@@ -222,27 +222,29 @@ def impute(target_xs, clf, raster_info=None, outdir="output", linechunk=1000, cl
 
             # Predict
             valid = np.array(list(set(np.where(np.any(np.isfinite(line), axis=1))[0])))
-            validline = line[valid, :]
-            responses = np.zeros(line.shape[0]) * np.nan
-            responses[valid] = clf.predict(validline)
-            responses2D = responses.reshape((linechunk, shape[1])).astype('int16')
-            response_ds.write_band(1, responses2D, window=window)
+            if valid:
+                validline = line[valid, :]
+                responses = np.zeros(line.shape[0]) * np.nan
+                responses[valid] = clf.predict(validline)
+                responses2D = responses.reshape((linechunk, shape[1])).astype('int16')
+                response_ds.write_band(1, responses2D, window=window)
 
-            if certainty or class_prob:
-                proba = np.zeros((line.shape[0],2)) * np.nan
-                proba[valid, :] = clf.predict_proba(validline)
+                if certainty or class_prob:
+                    proba = np.zeros((line.shape[0],2)) * np.nan
+                    proba[valid, :] = clf.predict_proba(validline)
 
-            # Certainty
-            if certainty:
-                certaintymax = np.nanmax(proba, axis=1)
-                certainty2D = certaintymax.reshape((linechunk, shape[1])).astype('float32')
-                certainty_ds.write_band(1, certainty2D, window=window)
+                # Certainty
+                if certainty:
+                    certaintymax = np.nanmax(proba, axis=1)
+                    certainty2D = certaintymax.reshape((linechunk, shape[1])).astype('float32')
+                    certainty_ds.write_band(1, certainty2D, window=window)
 
-            # write out probabilities for each class as a separate raster
-            for i, class_ds in enumerate(class_dss):
-                proba_class = proba[:, i]
-                classcert2D = proba_class.reshape((linechunk, shape[1])).astype('float32')
-                class_ds.write_band(1, classcert2D, window=window)
+                # write out probabilities for each class as a separate raster
+                if certainty or class_prob:
+                    for i, class_ds in enumerate(class_dss):
+                        proba_class = proba[:, i]
+                        classcert2D = proba_class.reshape((linechunk, shape[1])).astype('float32')
+                        class_ds.write_band(1, classcert2D, window=window)
 
     finally:
         response_ds.close()
