@@ -221,8 +221,8 @@ def impute(target_xs, clf, raster_info=None, outdir="output", linechunk=1000, cl
 
 
             # Predict
-            valid = np.array(list(set(np.where(np.any(np.isfinite(line), axis=1))[0])))
-            if len(valid) > 0:
+            valid = np.all(np.isfinite(line), axis=1)
+            if valid.sum() > 0:
                 validline = line[valid, :]
                 responses = np.zeros(line.shape[0]) * np.nan
                 responses[valid] = clf.predict(validline)
